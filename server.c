@@ -8,8 +8,7 @@
 
 #define MAX_CN 30
 
-typedef struct
-{
+typedef struct {
     int sock;
     struct sockaddr address;
     int addr_len;
@@ -73,23 +72,20 @@ int main(int argc, char ** argv)
     memset(&cn_table, 0, sizeof(cn_table));
 
     /* check for command line arguments */
-    if (argc != 2)
-    {
+    if (argc != 2) {
         fprintf(stderr, "usage: %s port\n", argv[0]);
         return -1;
     }
 
     /* obtain port number */
-    if (sscanf(argv[1], "%d", &port) <= 0)
-    {
+    if (sscanf(argv[1], "%d", &port) <= 0) {
         fprintf(stderr, "%s: error: wrong parameter: port\n", argv[0]);
         return -2;
     }
 
     /* create socket */
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sock <= 0)
-    {
+    if (sock <= 0) {
         fprintf(stderr, "%s: error: cannot create socket\n", argv[0]);
         return -3;
     }
@@ -98,32 +94,26 @@ int main(int argc, char ** argv)
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
-    if (bind(sock, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) < 0)
-    {
+    if (bind(sock, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) < 0) {
         fprintf(stderr, "%s: error: cannot bind socket to port %d\n", argv[0], port);
         return -4;
     }
 
     /* listen on port */
-    if (listen(sock, 5) < 0)
-    {
+    if (listen(sock, 5) < 0) {
         fprintf(stderr, "%s: error: cannot listen on port\n", argv[0]);
         return -5;
     }
 
     printf("%s: ready and listening\n", argv[0]);
 
-    while (1)
-    {
+    while (1) {
         /* accept incoming connections */
         connection = (connection_t *)malloc(sizeof(connection_t));
         connection->sock = accept(sock, &connection->address, &connection->addr_len);
-        if (connection->sock <= 0)
-        {
+        if (connection->sock <= 0) {
             free(connection);
-        }
-        else
-        {
+        } else {
             read(connection->sock, &connection->cn, sizeof(int));
             for (i = 0; i < cur; i++) {
                 if (cn_table[i] && cn_table[i] == connection->cn)
