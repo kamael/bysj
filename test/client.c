@@ -1,9 +1,10 @@
 #include <stdio.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+
+#include "../mw/client.h"
 
 int main(int argc, char ** argv)
 {
@@ -35,7 +36,7 @@ int main(int argc, char ** argv)
     }
 
     /* create socket */
-    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    sock = mw_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock <= 0) {
         fprintf(stderr, "%s: error: cannot create socket\n", argv[0]);
         return -3;
@@ -50,12 +51,12 @@ int main(int argc, char ** argv)
         return -4;
     }
     memcpy(&address.sin_addr, host->h_addr_list[0], host->h_length);
-    if (connect(sock, (struct sockaddr *)&address, sizeof(address))) {
+    if (mw_connect(sock, (struct sockaddr *)&address, sizeof(address))) {
         fprintf(stderr, "%s: error: cannot connect to host %s\n", argv[0], argv[1]);
         return -5;
     }
 
-    if (send(sock, &cn, sizeof(int), MSG_NOSIGNAL) == -1) {
+    if (mw_send(sock, &cn, sizeof(int), MSG_NOSIGNAL) == -1) {
         printf("send cn error\n");
     }
 
@@ -64,11 +65,11 @@ int main(int argc, char ** argv)
         memset(input, 0, 20);
         scanf("%20s",input);
         len = strlen(input);
-        if (send(sock, &len, sizeof(int), MSG_NOSIGNAL) == -1) {
+        if (mw_send(sock, &len, sizeof(int), MSG_NOSIGNAL) == -1) {
             printf("send length error\n");
             break;
         }
-        if (send(sock, input, len, MSG_NOSIGNAL) == -1) {
+        if (mw_send(sock, input, len, MSG_NOSIGNAL) == -1) {
             printf("send data error\n");
             break;
         }
@@ -77,7 +78,7 @@ int main(int argc, char ** argv)
     }
 
     /* close socket */
-    close(sock);
+    mw_close(sock);
 
     return 0;
 }
