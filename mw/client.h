@@ -29,14 +29,15 @@ client_t *cli_table = NULL;
 
 
 
-void mw_init_heart(void *cur)
+void temp_mw_init_heart(void *current)
 {
     struct sockaddr_in address;
-
     struct sockaddr cnn_address;
     socklen_t cnn_addr_len;
     int port = 8992;
     int sock, fd;
+
+    char buf[20];
 
     /* create socket */
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -57,13 +58,20 @@ void mw_init_heart(void *cur)
         fprintf(stderr, "error: cannot listen on port\n");
     }
 
-    printf("ready and listening\n");
-
     fd = accept(sock, &cnn_address, &cnn_addr_len);
     if (fd <= 0) {
+        fprintf(stderr, "error: cannot acceptt\n");
     }
 
-    //read(fd, buf, 20, MSG_NOSIGNAL);
+    while (1) {
+        sleep(8);
+        recv(fd, buf, 20, MSG_NOSIGNAL);
+
+        //if no msg
+
+    }
+
+
 }
 
 
@@ -87,12 +95,15 @@ int mw_socket(int domain, int type, int protocol)
 
     HASH_ADD_INT(cli_table, fake_fd, current);
 
+    //DEBUG
+    printf("debug::id: %d\n", current->client_id);
+
     return current->fake_fd;
 }
 
 int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
 {
-    pthread_t thread;
+    //pthread_t thread;
     int r = -1;
 
     client_t *current;
@@ -116,14 +127,14 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
 
         r = connect(current->fd, addr, len);
 
-        pthread_create(&thread, 0, (void *)mw_init_heart, (void *)current);
-        pthread_detach(thread);
-
-        send(   current->fd,
-                &(current->client_id),
-                sizeof(current->client_id),
-                MSG_NOSIGNAL);
+        //pthread_create(&thread, 0, (void *)mw_init_heart, (void *)current);
+        //pthread_detach(thread);
     }
+
+    send(   current->fd,
+            &(current->client_id),
+            sizeof(current->client_id),
+            MSG_NOSIGNAL);
 
     return r;
 }

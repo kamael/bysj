@@ -10,57 +10,20 @@
 #include "uthash.h"
 
 struct client {
-    int fd;             // key
-    int client_id;
+    int fake_fd;        //key 1
+    int fd;
+    int client_id;      //key 2
     int is_droped;
+
     UT_hash_handle hh;
 };
 
 typedef struct client client_t;
 
-client_t *cli_table = NULL;
-
-
-
-void *mw_init_heart(void *cur)
-{
-    struct sockaddr_in address;
-
-    struct sockaddr cnn_address;
-    socklen_t cnn_addr_len;
-    int port = 8992;
-    int sock, fd;
-    char buffer[20];
-
-    /* create socket */
-    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sock <= 0) {
-        fprintf(stderr, "error: cannot create socket\n");
-    }
-
-    /* bind socket to port */
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(port);
-    if (bind(sock, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) < 0) {
-        fprintf(stderr, "error: cannot bind socket\n");
-    }
-
-    /* listen on port */
-    if (listen(sock, 5) < 0) {
-        fprintf(stderr, "error: cannot listen on port\n");
-    }
-
-    printf("ready and listening\n");
-
-    fd = accept(sock, &cnn_address, &cnn_addr_len);
-    if (fd <= 0) {
-    }
-
-    //read(fd, buf, 20, MSG_NOSIGNAL);
-
-}
-
+client_t *cli_fd_table = NULL;  // fake_fd as key
+client_t *cli_id_table = NULL;  // client_id as key
+//使用双hash表实现可以两个不同的值作为key，修改hash表时需要同时修改两个表
+//该方法不高效但是能用。
 
 
 
@@ -70,7 +33,8 @@ int mw_socket(int domain, int type, int protocol)
     return fd;
 }
 
-int mw_bind(int fd, struct sockaddr *addr, socklen_t addr_len) {
+int mw_bind(int fd, struct sockaddr *addr, socklen_t addr_len)
+{
     return bind(fd, addr, addr_len);
 }
 
@@ -78,60 +42,45 @@ int mw_listen(int fd, int n) {
     return listen(fd, n);
 }
 
-int mw_accept(int fd, struct sockaddr *addr, socklen_t addr_len) {
-    int r = accept(fd, addr, addr_len);
-}
-
-int mw_connect(int fd, struct sockaddr *addr, socklen_t len)
+int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 {
-    pthread_t thread;
+    int c_fd = accept(fd, addr, addr_len);
+    int client_id;
+    client_t *client;
+    int fake_fd;
 
-    client_t *current;
-    HASH_FIND_INT(cli_table, &fd, current);
+    srand(time(NULL));
 
-    int r = connect(fd, addr, len);
+    recv(c_fd, &client_id, sizeof(int), MSG_NOSIGNAL);
 
-    pthread_create(&thread, 0, mw_init_heart, (void *)current);
-    pthread_detach(thread);
+    HASH_FIND_INT(cli_id_table, &client_id, client);
+    if (client == NULL) {
+        client = (client_t *)malloc(sizeof(client_t));
 
-    send(   fd,
-            &(current->client_id),
-            sizeof(current->client_id),
-            MSG_NOSIGNAL);
+        fake_fd = rand() & 0x1000000;
+        client->fake_fd = fake_fd;
+        client->fd = c_fd;
+        client->is_droped = 0;
+        client->client_id = client_id;
 
-    current->is_droped = 0;
-
-    return r;
-}
-
-ssize_t mw_send(int fd, const void *buf, size_t n, int flags)
-{
-    int r = send(fd, buf, n, flags);
-    if (r == -1) {
-        //TODO: reconnect
-
-        return -1;
+        HASH_ADD_INT(cli_id_table, client_id, client);
+        HASH_ADD_INT(cli_fd_table, fake_fd, client);
+    } else {
+        client->fd = c_fd;
+        client->is_droped = 0;
     }
 
-    return r;
+    return client->fake_fd;
 }
 
-ssize_t mw_recv(int fd, void *buf, size_t n, int flags)
-{
-    return recv(fd, buf, n, flags);
-}
-
-
-
-int mw_close(int fd)
+ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 {
     client_t *current;
-    HASH_FIND_INT(cli_table, &fd, current);
+    HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
-    free(current);
-    HASH_DEL(cli_table, current);
+    printf("debug::recv from id: %d\n", current->client_id);
 
-    return close(fd);
+    return recv(current->fd, buf, n, flags);
 }
 
 
