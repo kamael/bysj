@@ -1,0 +1,2 @@
+gcc read_server.c -o read_server -g -lpthread -Wall
+gcc client.c -o client -lpthread -g -Wall
