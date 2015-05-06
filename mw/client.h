@@ -7,17 +7,19 @@
 #include <assert.h>
 
 #include <pthread.h>
+#include "uthash.h"
 
 struct client {
-    int is_droped;
+    int fd;             // key
     int client_id;
-    int fd;
-    struct client* next;
+    int is_droped;
+    UT_hash_handle hh;
 };
 
 typedef struct client client_t;
-client_t *current = NULL;
-client_t *head = NULL;
+
+client_t *cli_table = NULL;
+
 
 
 void *mw_init_heart(void *cur)
@@ -66,21 +68,15 @@ int mw_socket(int domain, int type, int protocol)
 {
     int fd = socket(domain, type, protocol);
     int is_init = 0;
-
-    while (current && current->next)
-        current = current->next;
-    if (!current)
-        is_init = 1;
+    client_t *current;
 
     srand(time(NULL));
     current = (client_t *)malloc(sizeof(client_t));
-    current->is_droped = 0;
-    current->client_id = rand();
     current->fd = fd;
-    current->next = NULL;
+    current->client_id = rand();
+    current->is_droped = 0;
 
-    if (is_init)
-        head = current;
+    HASH_ADD_INT(cli_table, fd, current);
 
     return fd;
 }
@@ -88,21 +84,21 @@ int mw_socket(int domain, int type, int protocol)
 int mw_connect(int fd, struct sockaddr *addr, socklen_t len)
 {
     pthread_t thread;
-    client_t *cur = head;
+
+    client_t *current;
+    HASH_FIND_INT(cli_table, &fd, current);
 
     int r = connect(fd, addr, len);
 
-    while (cur && cur->fd != fd)
-        cur = cur->next;
-
-    assert(cur);
-
-    pthread_create(&thread, 0, mw_init_heart, (void *)cur);
+    pthread_create(&thread, 0, mw_init_heart, (void *)current);
     pthread_detach(thread);
 
-    send(fd, &(cur->client_id), sizeof(cur->client_id), MSG_NOSIGNAL);
+    send(   fd,
+            &(current->client_id),
+            sizeof(current->client_id),
+            MSG_NOSIGNAL);
 
-    cur->is_droped = 0;
+    current->is_droped = 0;
 
     return r;
 }
@@ -126,22 +122,11 @@ ssize_t mw_recv(int fd, void *buf, size_t n, int flags)
 
 int mw_close(int fd)
 {
-    client_t *cur = head;
-    client_t *prev = NULL;
+    client_t *current;
+    HASH_FIND_INT(cli_table, &fd, current);
 
-    assert(head);
-    while (cur && cur->fd != fd) {
-        prev = cur;
-        cur = cur->next;
-    }
-
-    if (!prev) {
-        free(head);
-        head = NULL;
-    } else {
-        prev->next = cur->next;
-        free(cur);
-    }
+    free(current);
+    HASH_DEL(cli_table, current);
 
     return close(fd);
 }
