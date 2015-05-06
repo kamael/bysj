@@ -84,7 +84,7 @@ int mw_socket(int domain, int type, int protocol)
 
     srand(time(NULL));
     current = (client_t *)malloc(sizeof(client_t));
-    current->fake_fd = rand() & 0x1000000;
+    current->fake_fd = rand() % 10000000 + 10000000;
     current->fd = fd;
     current->client_id = rand();
     current->is_droped = 0;

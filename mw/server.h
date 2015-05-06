@@ -57,7 +57,7 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
     if (client == NULL) {
         client = (client_t *)malloc(sizeof(client_t));
 
-        fake_fd = rand() & 0x1000000;
+        fake_fd = rand() % 10000000 + 10000000;
         client->fake_fd = fake_fd;
         client->fd = c_fd;
         client->is_droped = 0;
