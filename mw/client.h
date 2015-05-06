@@ -10,9 +10,16 @@
 #include "uthash.h"
 
 struct client {
-    int fd;             // key
+    int fake_fd;        //key
+    int fd;
     int client_id;
     int is_droped;
+
+    struct sockaddr *sock_addr;
+    socklen_t *sock_len;
+
+    int domain, type, protocol;
+
     UT_hash_handle hh;
 };
 
@@ -22,7 +29,7 @@ client_t *cli_table = NULL;
 
 
 
-void *mw_init_heart(void *cur)
+void mw_init_heart(void *cur)
 {
     struct sockaddr_in address;
 
@@ -30,7 +37,6 @@ void *mw_init_heart(void *cur)
     socklen_t cnn_addr_len;
     int port = 8992;
     int sock, fd;
-    char buffer[20];
 
     /* create socket */
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -58,7 +64,6 @@ void *mw_init_heart(void *cur)
     }
 
     //read(fd, buf, 20, MSG_NOSIGNAL);
-
 }
 
 
@@ -67,68 +72,97 @@ void *mw_init_heart(void *cur)
 int mw_socket(int domain, int type, int protocol)
 {
     int fd = socket(domain, type, protocol);
-    int is_init = 0;
     client_t *current;
 
     srand(time(NULL));
     current = (client_t *)malloc(sizeof(client_t));
+    current->fake_fd = rand() & 0x1000000;
     current->fd = fd;
     current->client_id = rand();
     current->is_droped = 0;
 
-    HASH_ADD_INT(cli_table, fd, current);
+    current->domain = domain;
+    current->type = type;
+    current->protocol = protocol;
 
-    return fd;
+    HASH_ADD_INT(cli_table, fake_fd, current);
+
+    return current->fake_fd;
 }
 
-int mw_connect(int fd, struct sockaddr *addr, socklen_t len)
+int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
 {
     pthread_t thread;
+    int r = -1;
 
     client_t *current;
-    HASH_FIND_INT(cli_table, &fd, current);
+    HASH_FIND_INT(cli_table, &fake_fd, current);
 
-    int r = connect(fd, addr, len);
+    if (current->is_droped) {
+        current->fd = socket(current->domain, current->type, current->protocol);
 
-    pthread_create(&thread, 0, mw_init_heart, (void *)current);
-    pthread_detach(thread);
+        while(r == -1) {
+            sleep(2);
+            r = connect(current->fd, addr, len);
+        }
+        current->is_droped = 0;
 
-    send(   fd,
-            &(current->client_id),
-            sizeof(current->client_id),
-            MSG_NOSIGNAL);
+    } else {
 
-    current->is_droped = 0;
+        current->sock_addr = (struct sockaddr *)malloc(sizeof(struct sockaddr));
+        current->sock_len = (socklen_t *)malloc(sizeof(socklen_t));
+        memcpy(current->sock_addr, addr, sizeof(struct sockaddr));
+        memcpy(current->sock_len, &len, sizeof(socklen_t));
 
-    return r;
-}
+        r = connect(current->fd, addr, len);
 
-ssize_t mw_send(int fd, const void *buf, size_t n, int flags)
-{
-    int r = send(fd, buf, n, flags);
-    if (r == -1) {
-        //TODO: reconnect
+        pthread_create(&thread, 0, (void *)mw_init_heart, (void *)current);
+        pthread_detach(thread);
 
-        return -1;
+        send(   current->fd,
+                &(current->client_id),
+                sizeof(current->client_id),
+                MSG_NOSIGNAL);
     }
 
     return r;
 }
 
-ssize_t mw_recv(int fd, void *buf, size_t n, int flags)
-{
-    return recv(fd, buf, n, flags);
-}
 
-int mw_close(int fd)
+ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 {
     client_t *current;
-    HASH_FIND_INT(cli_table, &fd, current);
+    HASH_FIND_INT(cli_table, &fake_fd, current);
 
+    int r = send(current->fd, buf, n, flags);
+    while (r == -1) {
+        current->is_droped = 1;
+        mw_connect(fake_fd, current->sock_addr, *current->sock_len);
+        r = send(current->fd, buf, n, flags);
+    }
+
+    return r;
+}
+
+ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
+{
+    client_t *current;
+    HASH_FIND_INT(cli_table, &fake_fd, current);
+
+    return recv(current->fd, buf, n, flags);
+}
+
+int mw_close(int fake_fd)
+{
+    client_t *current;
+    HASH_FIND_INT(cli_table, &fake_fd, current);
+
+    free(current->sock_addr);
+    free(current->sock_len);
     free(current);
     HASH_DEL(cli_table, current);
 
-    return close(fd);
+    return close(current->fd);
 }
 
 

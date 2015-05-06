@@ -1,6 +1,6 @@
 server
 client
-
+read_server
 # Object files
 *.o
 *.ko

@@ -10,17 +10,15 @@ int main(int argc, char ** argv)
 {
     int port;
     int sock = -1;
-    ssize_t send_return;
     struct sockaddr_in address;
     struct hostent * host;
     int len;
     static char exit[] = "exit";
     char input[20];
-    int cn;
 
     /* checking commandline parameter */
-    if (argc != 4) {
-        printf("usage: %s hostname port cn\n", argv[0]);
+    if (argc != 3) {
+        printf("usage: %s hostname port\n", argv[0]);
         return -1;
     }
 
@@ -30,10 +28,6 @@ int main(int argc, char ** argv)
         return -2;
     }
 
-    if (sscanf(argv[3], "%d", &cn) <= 0) {
-        fprintf(stderr, "%s: error: wrong parameter: cn\n", argv[0]);
-        return -3;
-    }
 
     /* create socket */
     sock = mw_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -56,19 +50,12 @@ int main(int argc, char ** argv)
         return -5;
     }
 
-    if (mw_send(sock, &cn, sizeof(int), MSG_NOSIGNAL) == -1) {
-        printf("send cn error\n");
-    }
 
     while (1) {
         printf(">");
         memset(input, 0, 20);
         scanf("%20s",input);
         len = strlen(input);
-        if (mw_send(sock, &len, sizeof(int), MSG_NOSIGNAL) == -1) {
-            printf("send length error\n");
-            break;
-        }
         if (mw_send(sock, input, len, MSG_NOSIGNAL) == -1) {
             printf("send data error\n");
             break;
