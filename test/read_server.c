@@ -9,13 +9,18 @@
 void *process(void *p_fd)
 {
     char buffer[1024];
+    int r;
     while (1) {
         memset(buffer, 0, 1024);
         printf("debug::fd:%d\n", *(int *)p_fd);
 
-        mw_recv(*(int *)p_fd, buffer, 1024, MSG_NOSIGNAL);
+        r = mw_recv(*(int *)p_fd, buffer, 1024, MSG_NOSIGNAL);
+        if (r <= 0)
+            break;
         printf("%s\n", buffer);
     }
+
+    return 0;
 }
 
 
@@ -25,8 +30,7 @@ int main(int argc, char **argv)
     struct sockaddr_in address;
     int *fd;
     struct sockaddr c_address;
-    int c_addr_len;
-    char buf[1024];
+    unsigned int c_addr_len;
     int port;
 
     pthread_t thread;
