@@ -92,10 +92,11 @@ void mw_init_recv_heart(void *p)
                 (struct sockaddr *)&peer_addr, &peer_len);
         if (buf[sizeof(int)] == 'H') {
             buf[sizeof(int)] = 0;
-            client_id = atoi(buf);
+            memcpy(&client_id, buf, sizeof(int));
             HASH_FIND_INT(id_fd_table, &client_id, id_key);
-            HASH_FIND_INT(cli_fd_table, &(id_key->fd), current);
-            if (current != NULL) {
+            if (id_key)
+                HASH_FIND_INT(cli_fd_table, &(id_key->fd), current);
+            if (id_key != NULL && current != NULL) {
                 time(&(current->time));
             }
         }

@@ -63,7 +63,7 @@ void mw_init_send_heart(void *p)
             buf[sizeof(int)] = 'H';
             sendto(sock, buf, 20, 0,
                 (struct sockaddr *)&address, sizeof(struct sockaddr_in));
-            printf("debug: send heart");
+            printf("debug: send heart\n");
         }
     }
 
@@ -109,8 +109,9 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
     recv(c_fd, &client_id, sizeof(int), MSG_NOSIGNAL);
 
     HASH_FIND_INT(id_fd_table, &client_id, id_key);
-    HASH_FIND_INT(cli_fd_table, &id_key->fd, client);
-    if (client == NULL) {
+    if (id_key)
+        HASH_FIND_INT(cli_fd_table, &id_key->fd, client);
+    if (id_key == NULL || client == NULL) {
         client = (client_t *)malloc(sizeof(client_t));
 
         fake_fd = rand() % 10000000 + 10000000;
@@ -121,7 +122,7 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 
         client->cli_port = 8992;
         client->cli_ip = \
-            (long)(((struct sockaddr_in *)&addr)->sin_addr.s_addr);
+            (long)(((struct sockaddr_in *)addr)->sin_addr.s_addr);
 
 
 
@@ -132,6 +133,7 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
         HASH_ADD_INT(cli_fd_table, fake_fd, client);
         HASH_ADD_INT(id_fd_table, id, id_key);
     } else {
+        shutdown(client->fd, 2);
         client->fd = c_fd;
         client->is_droped = 0;
     }
@@ -142,11 +144,39 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 {
     client_t *current;
+    int r;
+
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     printf("debug::recv from id: %d\n", current->client_id);
 
-    return recv(current->fd, buf, n, flags);
+    r = recv(current->fd, buf, n, flags);
+
+    while (r == -1) {
+        printf("debug::%d droped in recv by accept\n", current->client_id);
+        r = recv(current->fd, buf, n, flags);
+    }
+
+    return r;
 }
 
+ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
+{
+    client_t *current;
+    int r;
+
+    HASH_FIND_INT(cli_fd_table, &fake_fd, current);
+
+    r = send(current->fd, buf, n, flags);
+    while (r == -1) {
+        printf("debug::%d droped in send\n", current->client_id);
+        current->is_droped = 1;
+        while (current->is_droped) {
+            sleep(1);
+        }
+        r = send(current->fd, buf, n, flags);
+    }
+
+    return r;
+}
 
