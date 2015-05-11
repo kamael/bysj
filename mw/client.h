@@ -41,7 +41,7 @@ int heart_on = 0;
 
 
 
-void mw_init_heart(void *p)
+void mw_init_recv_heart(void *p)
 {
     struct sockaddr_in address;
     struct sockaddr_in peer_addr;
@@ -64,7 +64,7 @@ void mw_init_heart(void *p)
 
 
     /* create socket */
-    sock = socket(PF_INET, SOCK_DGRAM, 0);
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock <= 0) {
         fprintf(stderr, "error: cannot create socket\n");
     }
@@ -135,7 +135,7 @@ int mw_socket(int domain, int type, int protocol)
 
     //心跳包开始工作
     if (!heart_on) {
-        pthread_create(&thread, 0, (void *)mw_init_heart, p);
+        pthread_create(&thread, 0, (void *)mw_init_recv_heart, p);
         pthread_detach(thread);
         heart_on = 1;
     }
