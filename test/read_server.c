@@ -12,7 +12,7 @@ void *process(void *p_fd)
     int r;
     while (1) {
         memset(buffer, 0, 1024);
-        printf("debug::fd:%d\n", *(int *)p_fd);
+        //printf("debug::fd:%d\n", *(int *)p_fd);
 
         r = mw_recv(*(int *)p_fd, buffer, 1024, MSG_NOSIGNAL);
         if (r <= 0)

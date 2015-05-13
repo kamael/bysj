@@ -9,6 +9,12 @@
 #include <pthread.h>
 #include "uthash.h"
 
+#if !defined(NDEBUG)
+#define dlog(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
+#else
+#define dlog(...) do {} while (0)
+#endif
+
 struct client {
     int fake_fd;        //key
     int fd;
@@ -73,7 +79,7 @@ void mw_init_send_heart(void *p)
             buf[sizeof(int)] = 'H';
             sendto(sock, buf, 20, 0,
                 (struct sockaddr *)&address, sizeof(struct sockaddr_in));
-            printf("debug: send heart\n");
+            dlog("debug: send heart\n");
         }
     }
 
@@ -126,8 +132,7 @@ int mw_socket(int domain, int type, int protocol)
     HASH_ADD_INT(cli_fd_table, fake_fd, current);
     HASH_ADD_INT(id_fd_table, id, id_key);
 
-    //DEBUG
-    printf("debug::id: %d\n", current->client_id);
+    dlog("debug::id: %d\n", current->client_id);
 
     return current->fake_fd;
 }
@@ -140,7 +145,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        printf("debug::%d is re connect\n", current->client_id);
+        dlog("debug::%d is re connect\n", current->client_id);
         current->fd = socket(current->domain, current->type, current->protocol);
 
         while(r == -1) {
@@ -175,13 +180,13 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        printf("debug::%d droped before send\n", current->client_id);
+        dlog("debug::%d droped before send\n", current->client_id);
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
     }
 
     int r = send(current->fd, buf, n, flags);
     while (r == -1) {
-        printf("debug::%d droped in send\n", current->client_id);
+        dlog("debug::%d droped in send\n", current->client_id);
         current->is_droped = 1;
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         r = send(current->fd, buf, n, flags);
@@ -197,14 +202,14 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        printf("debug::%d droped before recv\n", current->client_id);
+        dlog("debug::%d droped before recv\n", current->client_id);
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
     }
 
     while (1) {
         r = recv(current->fd, buf, n, flags);
         if (r == 0) {
-        printf("debug::%d droped in recv\n", current->client_id);
+        dlog("debug::%d droped in recv\n", current->client_id);
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
             break;

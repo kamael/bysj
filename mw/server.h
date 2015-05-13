@@ -9,6 +9,12 @@
 #include <pthread.h>
 #include "uthash.h"
 
+#if !defined(NDEBUG)
+#define dlog(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
+#else
+#define dlog(...) do {} while (0)
+#endif
+
 struct client {
     int fake_fd;        //key
     int fd;
@@ -82,7 +88,7 @@ void mw_init_recv_heart(void *p)
                 sizeof(timeout)) < 0)
         fprintf(stderr, "setsockopt failed\n");
 
-    printf("heart start\n");
+    dlog("heart start\n");
 
     time(&last_time);
     while (1) {
@@ -105,14 +111,14 @@ void mw_init_recv_heart(void *p)
 
         time(&cur_time);
         passed_time = difftime(cur_time, last_time);
-        printf("debug::heart: passed %f\n", passed_time);
+        dlog("debug::heart: passed %f\n", passed_time);
         if (passed_time >= 6) {
-            printf("start iter\n");
+            dlog("start iter\n");
             //遍历hash表，检查每个客户端的连接是否存活
             HASH_ITER(hh, cli_fd_table, current, tmp_item) {
                 if (current->time != 0 && \
                         difftime(cur_time, current->time) > 8) {
-                    printf("id %d is droped\n", current->client_id);
+                    dlog("id %d is droped\n", current->client_id);
                     current->is_droped = 1;
                     shutdown(current->fd, 2);
                 }
@@ -202,12 +208,12 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
-    printf("debug::recv from id: %d\n", current->client_id);
+    dlog("debug::recv from id: %d\n", current->client_id);
 
     r = recv(current->fd, buf, n, flags);
 
     while (r == -1) {
-        printf("debug::%d droped in recv by accept\n", current->client_id);
+        dlog("debug::%d droped in recv by accept\n", current->client_id);
         r = recv(current->fd, buf, n, flags);
     }
 
@@ -223,7 +229,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     r = send(current->fd, buf, n, flags);
     while (r == -1) {
-        printf("debug::%d droped in send\n", current->client_id);
+        dlog("debug::%d droped in send\n", current->client_id);
         current->is_droped = 1;
         while (current->is_droped) {
             sleep(1);
