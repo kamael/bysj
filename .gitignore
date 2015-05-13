@@ -1,6 +1,8 @@
 server
 client
 read_server
+echo_server
+echo_client
 # Object files
 *.o
 *.ko
