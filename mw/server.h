@@ -212,8 +212,12 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 
     r = recv(current->fd, buf, n, flags);
 
-    while (r == -1) {
+    while (r <= 0) {
         debug_log("debug::%d droped in recv by accept\n", current->client_id);
+        current->is_droped = 1;
+        while (current->is_droped) {
+            sleep(1);
+        }
         r = recv(current->fd, buf, n, flags);
     }
 
@@ -228,7 +232,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     r = send(current->fd, buf, n, flags);
-    while (r == -1) {
+    while (r <= 0) {
         debug_log("debug::%d droped in send\n", current->client_id);
         current->is_droped = 1;
         while (current->is_droped) {
