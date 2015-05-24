@@ -168,7 +168,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     send(   current->fd,
             &(current->client_id),
             sizeof(current->client_id),
-            MSG_NOSIGNAL);
+            0);
 
     return r;
 }

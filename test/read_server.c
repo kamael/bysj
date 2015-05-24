@@ -14,7 +14,7 @@ void *process(void *p_fd)
         memset(buffer, 0, 1024);
         //printf("debug::fd:%d\n", *(int *)p_fd);
 
-        r = mw_recv(*(int *)p_fd, buffer, 1024, MSG_NOSIGNAL);
+        r = mw_recv(*(int *)p_fd, buffer, 1024, 0);
         if (r <= 0)
             break;
         printf("%s\n", buffer);

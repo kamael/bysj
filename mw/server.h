@@ -167,7 +167,7 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 
     srand(time(NULL));
 
-    recv(c_fd, &client_id, sizeof(int), MSG_NOSIGNAL);
+    recv(c_fd, &client_id, sizeof(int), 0);
 
     HASH_FIND_INT(id_fd_table, &client_id, id_key);
     if (id_key) {

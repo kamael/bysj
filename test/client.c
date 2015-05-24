@@ -56,7 +56,7 @@ int main(int argc, char ** argv)
         memset(input, 0, 20);
         scanf("%20s",input);
         len = strlen(input);
-        if (mw_send(sock, input, len, MSG_NOSIGNAL) == -1) {
+        if (mw_send(sock, input, len, 0) == -1) {
             printf("send data error\n");
             break;
         }
