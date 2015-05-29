@@ -118,11 +118,11 @@ int mw_socket(int domain, int type, int protocol)
     current->server_port = 8992;
 /*
     current->time = 0;
+*/
 
     current->domain = domain;
     current->type = type;
     current->protocol = protocol;
-*/
 
 
     id_key = (id_fd_t *)malloc(sizeof(id_fd_t));
