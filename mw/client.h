@@ -206,6 +206,10 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     char *s_buf;
     char r_buf[20];
 
+    struct timeval timeout;
+    timeout.tv_sec = 2;
+    timeout.tv_usec = 0;
+
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     s_buf = malloc(n + sizeof(int));
@@ -220,6 +224,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
     }
 
+    debug_log("start send\n");
 
     while (1) {
         r = send(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
@@ -229,7 +234,12 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
             debug_log("debug:: recv success log start\n");
+            setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
+                (char *)&timeout, sizeof(timeout));
             r = recv(current->fd, r_buf, 20, MSG_NOSIGNAL);
+            timeout.tv_sec = 0;
+            setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
+                (char *)&timeout, sizeof(timeout));
             if (r > 0)
                 break;
             debug_log("debug:: recv log error");
