@@ -23,6 +23,8 @@ struct client {
     int is_droped;
     int is_connected;
 
+    int count;
+
     long server_ip;
     int server_port;
 
@@ -145,6 +147,8 @@ int mw_socket(int domain, int type, int protocol)
     current->time = 0;
 */
 
+    current->count = -1;
+
     current->domain = domain;
     current->type = type;
     current->protocol = protocol;
@@ -170,7 +174,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        while (current->is_connected) {
+        while (current->is_connected == 0) {
             sleep(2);
         }
 
@@ -218,7 +222,6 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     s_buf = malloc(n + sizeof(int));
-    memset(s_buf, 0, n + sizeof(int));
     memcpy(s_buf, (char *)&count_num, sizeof(int));
     memcpy(s_buf + sizeof(int), buf, n);
     count_num++;
@@ -263,7 +266,15 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 {
     client_t *current;
     int r;
+
+    int tmp_count;
+    char *s_buf;
+    char r_buf[20] = "00";
+
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
+
+    s_buf = malloc(n + sizeof(int));
+    memset(s_buf, 0, n + sizeof(int));
 
     if (current->is_droped) {
         debug_log("debug::%d droped before recv\n", current->client_id);
@@ -277,7 +288,15 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             current->is_droped = 1;
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
-            break;
+            memcpy((char *)&tmp_count, s_buf, sizeof(int));
+            if (tmp_count - current->count <= 0) {
+                ;
+            } else {
+                current->count = tmp_count;
+                memcpy(buf, s_buf + sizeof(int), n);
+                send(current->fd, r_buf, 20, MSG_NOSIGNAL);
+                break;
+            }
         }
     }
 

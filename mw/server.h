@@ -46,6 +46,7 @@ client_t *cli_fd_table = NULL;
 id_fd_t *id_fd_table = NULL;
 
 int heart_on = 0;
+int count_num = 0;
 
 
 void mw_init_recv_heart(void *p)
@@ -217,8 +218,24 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     client_t *current;
     int r;
 
+    char *s_buf;
+    char r_buf[20];
+
+    struct timeval timeout;
+    timeout.tv_usec = 0;
+
+
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
+    s_buf = malloc(n + sizeof(int));
+    memcpy(s_buf, (char *)&(count_num), sizeof(int));
+    memcpy(s_buf + sizeof(int), buf, n);
+    count_num++;
+
+
+    while (current->is_droped) {
+        sleep(1);
+    }
 
     while (1) {
         r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
@@ -229,7 +246,17 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
                 sleep(1);
             }
         } else {
-            break;
+
+            timeout.tv_sec = 4;
+            setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
+                    (char *)&timeout, sizeof(timeout));
+            r = recv(current->fd, r_buf, 20, MSG_NOSIGNAL);
+            timeout.tv_sec = 0;
+            setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
+                    (char *)&timeout, sizeof(timeout));
+
+            if (r > 0)
+                break;
         }
     }
 
