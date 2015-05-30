@@ -204,46 +204,54 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
     return client->fake_fd;
 }
 
-ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
-{
-    client_t *current;
-    int r;
-
-    HASH_FIND_INT(cli_fd_table, &fake_fd, current);
-
-    debug_log("debug::recv from id: %d\n", current->client_id);
-
-    r = recv(current->fd, buf, n, flags | MSG_NOSIGNAL);
-
-    while (r <= 0) {
-        debug_log("debug::%d droped in recv by accept\n", current->client_id);
-        current->is_droped = 1;
-        while (current->is_droped) {
-            sleep(1);
-        }
-        r = recv(current->fd, buf, n, flags | MSG_NOSIGNAL);
-    }
-
-    return r;
-}
 
 ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 {
     client_t *current;
     int r;
+    char buf[20];
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
-    r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
-    while (r <= 0) {
-        debug_log("debug::%d droped in send\n", current->client_id);
-        current->is_droped = 1;
-        while (current->is_droped) {
-            sleep(1);
-        }
+
+    while (1) {
         r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        if (r <= 0) {
+            debug_log("debug::%d droped in send\n", current->client_id);
+            current->is_droped = 1;
+            while (current->is_droped) {
+                sleep(1);
+            }
+        } else {
+            break;
+        }
     }
 
     return r;
 }
+
+ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
+{
+    client_t *current;
+    int r;
+    HASH_FIND_INT(cli_fd_table, &fake_fd, current);
+
+    debug_log("debug::recv from id: %d\n", current->client_id);
+
+    while (1) {
+        r = recv(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        if (r <= 0) {
+            debug_log("debug::%d droped in recv\n", current->client_id);
+            current->is_droped = 1;
+            while (current->is_droped) {
+                sleep(1);
+            }
+        } else {
+            break;
+        }
+    }
+
+    return r;
+}
+
 
