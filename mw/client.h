@@ -9,7 +9,6 @@
 #include <pthread.h>
 #include "uthash.h"
 
-#define NDEBUG
 
 #if !defined(NDEBUG)
 #define debug_log(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
@@ -59,6 +58,14 @@ void mw_init_send_heart(void *p)
     struct sockaddr_in address;
     int sock;
 
+    struct sockaddr_in peer_addr;
+    socklen_t peer_len;
+    int r;
+    struct timeval timeout;
+    timeout.tv_sec = 2;
+    timeout.tv_usec = 0;
+
+
     char buf[20];
 
     client_t *client, *tmp_item;
@@ -71,6 +78,10 @@ void mw_init_send_heart(void *p)
 
     address.sin_family = AF_INET;
 
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,
+                (char *)&timeout, sizeof(timeout)) < 0)
+                fprintf(stderr, "setsockopt failed\n");
+
     while(1) {
         sleep(2);
 
@@ -81,7 +92,18 @@ void mw_init_send_heart(void *p)
             buf[sizeof(int)] = 'H';
             sendto(sock, buf, 20, 0,
                 (struct sockaddr *)&address, sizeof(struct sockaddr_in));
-            debug_log("debug: send heart\n");
+            r = recvfrom(sock, buf, 20, 0,
+                    (struct sockaddr *)&peer_addr, &peer_len);
+
+            if (r > 0) {
+                debug_log("debug: send heart\n");
+
+            } else {
+                debug_log("debug: heart error\n");
+                client->is_droped = 1;
+                shutdown(client->fd, 2);
+            }
+
         }
     }
 
@@ -179,6 +201,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
 ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 {
     client_t *current;
+    int r;
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
@@ -186,12 +209,16 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
     }
 
-    int r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
-    while (r <= 0) {
-        debug_log("debug::%d droped in send\n", current->client_id);
-        current->is_droped = 1;
-        mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
+
+    while (1) {
         r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        if (r <= 0) {
+            debug_log("debug::%d droped in send\n", current->client_id);
+            current->is_droped = 1;
+            mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
+        } else {
+            break;
+        }
     }
 
     return r;

@@ -9,7 +9,6 @@
 #include <pthread.h>
 #include "uthash.h"
 
-#define NDEBUG
 
 #if !defined(NDEBUG)
 #define debug_log(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
@@ -98,6 +97,8 @@ void mw_init_recv_heart(void *p)
         memset(buf, 0, 20);
         recvfrom(sock, buf, 20, 0,
                 (struct sockaddr *)&peer_addr, &peer_len);
+        sendto(sock, buf, 20, 0, (struct sockaddr *)&peer_addr, peer_len);
+
         if (buf[sizeof(int)] == 'H') {
             buf[sizeof(int)] = 0;
             memcpy(&client_id, buf, sizeof(int));
