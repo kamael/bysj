@@ -28,7 +28,7 @@ struct client {
     */
 
     time_t time;
-
+    int count;
 
     UT_hash_handle hh;
 };
@@ -234,12 +234,21 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 {
     client_t *current;
     int r;
+
+    int tmp_count;
+    int len;
+    char *s_buf;
+    char r_buf[20] = "000";
+
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
+
+    len = setlen(buf);
+    s_buf = malloc(len + sizeof(int));
 
     debug_log("debug::recv from id: %d\n", current->client_id);
 
     while (1) {
-        r = recv(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        r = recv(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
         if (r <= 0) {
             debug_log("debug::%d droped in recv\n", current->client_id);
             current->is_droped = 1;
@@ -247,7 +256,14 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
                 sleep(1);
             }
         } else {
-            break;
+            memcpy((char *)&tmp_count, s_buf, sizeof(int));
+            if (tmp_count - current->count <= 0) {
+                ;
+            } else {
+                memcpy(buf, s_buf + sizeof(int), len);
+                send(current->fd, r_buf, 20, MSG_NOSIGNAL);
+                break;
+            }
         }
     }
 

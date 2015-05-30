@@ -51,7 +51,7 @@ client_t *cli_fd_table = NULL;
 id_fd_t *id_fd_table = NULL;
 
 int heart_on = 0;
-
+int count_num = 0;
 
 void mw_init_send_heart(void *p)
 {
@@ -202,7 +202,19 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 {
     client_t *current;
     int r;
+
+    int len;
+    char *s_buf;
+    char r_buf[20];
+
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
+
+    len = strlen(buf);
+    s_buf = malloc(len + sizeof(int));
+    memcpy(s_buf, (char *)&count_num, sizeof(int));
+    memcpy(s_buf + sizeof(int), buf, len);
+    count_num++;
+
 
     if (current->is_droped) {
         debug_log("debug::%d droped before send\n", current->client_id);
@@ -211,13 +223,15 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
 
     while (1) {
-        r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        r = send(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
         if (r <= 0) {
             debug_log("debug::%d droped in send\n", current->client_id);
             current->is_droped = 1;
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
-            break;
+            r = recv(current->fd, r_buf, 20, MSG_NOSIGNAL);
+            if (r > 0)
+                break;
         }
     }
 
