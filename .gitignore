@@ -3,6 +3,10 @@ client
 read_server
 echo_server
 echo_client
+linux.tar.xz
+send.txt
+receive.txt
+
 # Object files
 *.o
 *.ko

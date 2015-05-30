@@ -239,7 +239,11 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     while (1) {
         r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
-        if (r <= 0) {
+
+        if (r == 0)
+            return 0;
+
+        if (r < 0) {
             debug_log("debug::%d droped in send\n", current->client_id);
             current->is_droped = 1;
             while (current->is_droped) {
@@ -281,7 +285,11 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 
     while (1) {
         r = recv(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
-        if (r <= 0) {
+
+        if (r == 0)
+            return 0;
+
+        if (r < 0) {
             debug_log("debug::%d droped in recv\n", current->client_id);
             current->is_droped = 1;
             while (current->is_droped) {
