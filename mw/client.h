@@ -169,10 +169,15 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        current->fd = socket(current->domain, current->type, current->protocol);
+        while (current->is_droped) {
+            sleep(2);
+        }
 
+        debug_log("debug::%d is re connect\n", current->client_id);
+        r = -1;
         while(r == -1) {
-            debug_log("debug::%d is re connect\n", current->client_id);
+            debug_log("debug:: start re connect\n");
+            current->fd = socket(current->domain, current->type, current->protocol);
             sleep(2);
             r = connect(current->fd, addr, len);
         }
