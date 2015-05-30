@@ -228,11 +228,15 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
             current->is_droped = 1;
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
+            debug_log("debug:: recv success log start\n");
             r = recv(current->fd, r_buf, 20, MSG_NOSIGNAL);
             if (r > 0)
                 break;
+            debug_log("debug:: recv log error");
         }
     }
+
+    debug_log("debug:: send success\n");
 
     return r;
 }

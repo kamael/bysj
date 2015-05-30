@@ -258,8 +258,10 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
         } else {
             memcpy((char *)&tmp_count, s_buf, sizeof(int));
             if (tmp_count - current->count <= 0) {
+                debug_log("debug:: count is little\n");
                 ;
             } else {
+                debug_log("debug:: send back\n");
                 current->count = tmp_count;
                 memcpy(buf, s_buf + sizeof(int), n);
                 send(current->fd, r_buf, 20, MSG_NOSIGNAL);
