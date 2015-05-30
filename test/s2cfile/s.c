@@ -8,10 +8,40 @@
 //#include <sys/socket.h>
 
 #include "mw/server.h"
+#include <pthread.h>
+
 
 #define PORT 5002 // The port which is communicate with server
 #define BACKLOG 10
 #define LENGTH 512 // Buffer length
+
+void *process(void *fd) {
+            int nsockfd = *(int *)fd;
+            char* f_name = "send.txt";
+            char sdbuf[LENGTH]; // Send buffer
+            printf("[server] send %s to the client...", f_name);
+            FILE *fp = fopen(f_name, "r");
+            if(fp == NULL)
+            {
+                printf("ERROR: File %s not found.\n", f_name);
+                exit(1);
+            }
+            bzero(sdbuf, LENGTH);
+            int f_block_sz;
+            while((f_block_sz = fread(sdbuf, sizeof(char), LENGTH, fp))>0)
+            {
+                if(mw_send(nsockfd, sdbuf, f_block_sz, 0) < 0)
+                {
+                    printf("ERROR: Failed to send file %s.\n", f_name);
+                    break;
+                }
+                bzero(sdbuf, LENGTH);
+            }
+            printf("ok!\n");
+            mw_shutdown(nsockfd, 2);
+            printf("[server] connection closed.\n");
+        }
+
 int main ()
 {
     int sockfd; // Socket file descriptor
@@ -20,6 +50,8 @@ int main ()
     int sin_size; // to store struct size
     struct sockaddr_in addr_local;
     struct sockaddr_in addr_remote;
+    pthread_t thread;
+
     /* Get the Socket file descriptor */
     if( (sockfd = mw_socket(AF_INET, SOCK_STREAM, 0)) == -1 )
     {
@@ -46,8 +78,7 @@ int main ()
         return (0);
     }
     else printf ("[server] listening the port %d sucessfully.\n", PORT);
-    int success = 0;
-    while(success == 0)
+    while(1)
     {
         sin_size = sizeof(struct sockaddr_in);
         /* Wait a connection, and obtain a new socket file despriptor for single connection */
@@ -55,35 +86,7 @@ int main ()
             printf ("ERROR: Obtain new Socket Despcritor error.\n");
         else printf ("[server] server has got connect.\n");
         /* Child process */
-        if(!fork())
-        {
-            int nsockfd = asockfd;
-            asockfd = 0;
-            char* f_name = "send.txt";
-            char sdbuf[LENGTH]; // Send buffer
-            printf("[server] send %s to the client...", f_name);
-            FILE *fp = fopen(f_name, "r");
-            if(fp == NULL)
-            {
-                printf("ERROR: File %s not found.\n", f_name);
-                exit(1);
-            }
-            bzero(sdbuf, LENGTH);
-            int f_block_sz;
-            while((f_block_sz = fread(sdbuf, sizeof(char), LENGTH, fp))>0)
-            {
-                if(mw_send(nsockfd, sdbuf, f_block_sz, 0) < 0)
-                {
-                    printf("ERROR: Failed to send file %s.\n", f_name);
-                    break;
-                }
-                bzero(sdbuf, LENGTH);
-            }
-            printf("ok!\n");
-            success = 1;
-            mw_shutdown(nsockfd, 2);
-            printf("[server] connection closed.\n");
-            while(waitpid(-1, NULL, WNOHANG) > 0);
-        }
+        pthread_create(&thread, 0, (void *)process, (void *)&asockfd);
+        pthread_detach(thread);
     }
 }
