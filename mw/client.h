@@ -280,13 +280,16 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     s_buf = malloc(n + sizeof(int));
     memset(s_buf, 0, n + sizeof(int));
 
+
     if (current->is_droped) {
         debug_log("debug::%d droped before recv\n", current->client_id);
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
     }
 
+    debug_log("start recv\n");
+
     while (1) {
-        r = recv(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        r = recv(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
 
         if (r == 0)
             return 0;
@@ -296,10 +299,15 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             current->is_droped = 1;
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
+            debug_log("recving\n");
+
             memcpy((char *)&tmp_count, s_buf, sizeof(int));
             if (tmp_count - current->count <= 0) {
-                ;
+                debug_log("count little %d %d\n",
+                    tmp_count, current->count);
             } else {
+
+                debug_log("send success log");
                 current->count = tmp_count;
                 memcpy(buf, s_buf + sizeof(int), n);
                 send(current->fd, r_buf, 20, MSG_NOSIGNAL);

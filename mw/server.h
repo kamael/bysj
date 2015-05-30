@@ -234,11 +234,14 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
 
     while (current->is_droped) {
+        debug_log("droped");
         sleep(1);
     }
 
+    debug_log("start send");
+
     while (1) {
-        r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
+        r = send(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
 
         if (r == 0)
             return 0;
@@ -250,6 +253,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
                 sleep(1);
             }
         } else {
+            debug_log("send recv log");
 
             timeout.tv_sec = 4;
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
@@ -263,6 +267,8 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
                 break;
         }
     }
+
+    debug_log("send success");
 
     return r;
 }
