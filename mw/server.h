@@ -171,42 +171,49 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 
     srand(time(NULL));
 
-    recv(c_fd, &client_id, sizeof(int), MSG_NOSIGNAL);
+    while (1) {
 
-    HASH_FIND_INT(id_fd_table, &client_id, id_key);
-    if (id_key) {
-        HASH_FIND_INT(cli_fd_table, &id_key->fd, client);
-        assert(client != NULL);
-    }
-    if (id_key == NULL || client == NULL) {
-        debug_log("debug:: new connect from %d\n", client_id);
+        recv(c_fd, &client_id, sizeof(int), MSG_NOSIGNAL);
+
+        HASH_FIND_INT(id_fd_table, &client_id, id_key);
+        if (id_key) {
+            HASH_FIND_INT(cli_fd_table, &id_key->fd, client);
+            assert(client != NULL);
+        }
+        if (id_key == NULL || client == NULL) {
+            debug_log("debug:: new connect from %d\n", client_id);
 
 
-        client = (client_t *)malloc(sizeof(client_t));
+            client = (client_t *)malloc(sizeof(client_t));
 
-        fake_fd = rand() % 10000000 + 10000000;
-        client->fake_fd = fake_fd;
-        client->fd = c_fd;
-        client->is_droped = 0;
-        client->client_id = client_id;
+            fake_fd = rand() % 10000000 + 10000000;
+            client->fake_fd = fake_fd;
+            client->fd = c_fd;
+            client->is_droped = 0;
+            client->client_id = client_id;
 
-        client->time = 0;
-        time(&client->time);
+            client->time = 0;
+            time(&client->time);
 
-        client->count = -1;
+            client->count = -1;
 
-        id_key = (id_fd_t *)malloc(sizeof(id_fd_t));
-        id_key->id = client_id;
-        id_key->fd = client->fake_fd;
+            id_key = (id_fd_t *)malloc(sizeof(id_fd_t));
+            id_key->id = client_id;
+            id_key->fd = client->fake_fd;
 
-        HASH_ADD_INT(cli_fd_table, fake_fd, client);
-        HASH_ADD_INT(id_fd_table, id, id_key);
-    } else {
-        debug_log("debug:: reconnect from %d\n", client->client_id);
+            HASH_ADD_INT(cli_fd_table, fake_fd, client);
+            HASH_ADD_INT(id_fd_table, id, id_key);
 
-        shutdown(client->fd, 2);
-        client->fd = c_fd;
-        client->is_droped = 0;
+            break;
+        } else {
+            debug_log("debug:: reconnect from %d\n", client->client_id);
+
+            shutdown(client->fd, 2);
+            client->fd = c_fd;
+            client->is_droped = 0;
+        }
+
+        c_fd = accept(fd, addr, addr_len);
     }
 
     return client->fake_fd;
