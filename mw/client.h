@@ -21,7 +21,7 @@ struct client {
     int fd;
     int client_id;
     int is_droped;
-
+    int is_connected;
 
     long server_ip;
     int server_port;
@@ -97,10 +97,11 @@ void mw_init_send_heart(void *p)
 
             if (r > 0) {
                 debug_log("debug: send heart\n");
-
+                client->is_connected = 1;
             } else {
                 debug_log("debug: heart error\n");
                 client->is_droped = 1;
+                client->is_connected = 0;
                 shutdown(client->fd, 2);
             }
 
@@ -137,7 +138,7 @@ int mw_socket(int domain, int type, int protocol)
     current->fd = fd;
     current->client_id = rand();
     current->is_droped = 0;
-
+    current->is_connected = 0;
 
     current->server_port = 8992;
 /*
@@ -169,7 +170,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        while (current->is_droped) {
+        while (current->is_connected) {
             sleep(2);
         }
 
