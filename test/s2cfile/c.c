@@ -2,10 +2,13 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <netdb.h>
+//#include <netdb.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+//#include <netinet/in.h>
+//#include <sys/socket.h>
+
+#include "mw/client.h"
+
 #define PORT 5002
 #define LENGTH 512 // Buffer length
 int main(int argc, char *argv[])
@@ -14,7 +17,7 @@ int main(int argc, char *argv[])
     char revbuf[LENGTH]; // Receiver buffer
     struct sockaddr_in remote_addr;
     /* Get the Socket file descriptor */
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    if ((sockfd = mw_socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         printf("ERROR: Failed to obtain Socket Descriptor!\n");
         return (0);
@@ -25,7 +28,7 @@ int main(int argc, char *argv[])
     inet_pton(AF_INET, "127.0.0.1", &remote_addr.sin_addr);
     bzero(&(remote_addr.sin_zero), 8);
     /* Try to connect the remote */
-    if (connect(sockfd, (struct sockaddr *)&remote_addr, sizeof(struct sockaddr)) == -1)
+    if (mw_connect(sockfd, (struct sockaddr *)&remote_addr, sizeof(struct sockaddr)) == -1)
     {
         printf ("ERROR: Failed to connect to the host!\n");
         return (0);
@@ -43,7 +46,7 @@ int main(int argc, char *argv[])
         int success = 0;
         while(success == 0)
         {
-            while(f_block_sz = recv(sockfd, revbuf, LENGTH, 0))
+            while(f_block_sz =mw_recv(sockfd, revbuf, LENGTH, 0))
             {
                 if(f_block_sz < 0)
                 {
