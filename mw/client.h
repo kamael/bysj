@@ -169,10 +169,10 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
-        debug_log("debug::%d is re connect\n", current->client_id);
         current->fd = socket(current->domain, current->type, current->protocol);
 
         while(r == -1) {
+            debug_log("debug::%d is re connect\n", current->client_id);
             sleep(2);
             r = connect(current->fd, addr, len);
         }
@@ -207,7 +207,6 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     char r_buf[20];
 
     struct timeval timeout;
-    timeout.tv_sec = 2;
     timeout.tv_usec = 0;
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
@@ -234,15 +233,18 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
             mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
         } else {
             debug_log("debug:: recv success log start\n");
+
+            timeout.tv_sec = 4;
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
                 (char *)&timeout, sizeof(timeout));
             r = recv(current->fd, r_buf, 20, MSG_NOSIGNAL);
             timeout.tv_sec = 0;
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
                 (char *)&timeout, sizeof(timeout));
+
             if (r > 0)
                 break;
-            debug_log("debug:: recv log error");
+            debug_log("debug:: recv log error\n");
         }
     }
 

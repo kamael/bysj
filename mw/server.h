@@ -178,6 +178,9 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
         assert(client != NULL);
     }
     if (id_key == NULL || client == NULL) {
+        debug_log("debug:: new connect from %d\n", client_id);
+
+
         client = (client_t *)malloc(sizeof(client_t));
 
         fake_fd = rand() % 10000000 + 10000000;
@@ -198,6 +201,8 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
         HASH_ADD_INT(cli_fd_table, fake_fd, client);
         HASH_ADD_INT(id_fd_table, id, id_key);
     } else {
+        debug_log("debug:: reconnect from %d\n", client->client_id);
+
         shutdown(client->fd, 2);
         client->fd = c_fd;
         client->is_droped = 0;
