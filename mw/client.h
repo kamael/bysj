@@ -170,7 +170,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     send(   current->fd,
             &(current->client_id),
             sizeof(current->client_id),
-            0);
+            MSG_NOSIGNAL);
 
     return r;
 }
@@ -186,12 +186,12 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
     }
 
-    int r = send(current->fd, buf, n, flags);
+    int r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
     while (r <= 0) {
         debug_log("debug::%d droped in send\n", current->client_id);
         current->is_droped = 1;
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
-        r = send(current->fd, buf, n, flags);
+        r = send(current->fd, buf, n, flags | MSG_NOSIGNAL);
     }
 
     return r;
@@ -209,7 +209,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     }
 
     while (1) {
-        r = recv(current->fd, buf, n, flags);
+        r = recv(current->fd, buf, n, flags | MSG_NOSIGNAL);
         if (r <= 0) {
             debug_log("debug::%d droped in recv\n", current->client_id);
             current->is_droped = 1;
