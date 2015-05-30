@@ -241,7 +241,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     debug_log("start send");
 
     while (1) {
-        r = send(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
+        r = send(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
 
         if (r == 0)
             return 0;
@@ -270,7 +270,9 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     debug_log("send success");
 
-    return r;
+    assert(r > 4);
+
+    return r - sizeof(int);
 }
 
 ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
@@ -316,7 +318,9 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
         }
     }
 
-    return r;
+    assert(r > 4);
+
+    return r - sizeof(int);
 }
 
 int mw_shutdown(int fake_fd, int signal)

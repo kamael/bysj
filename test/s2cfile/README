@@ -1,0 +1,2 @@
+gcc c.c -o client -g -I../../ -lpthread -DNDEBUG
+gcc s.c -o server -g -I../../ -lpthread -DNDEBUG
