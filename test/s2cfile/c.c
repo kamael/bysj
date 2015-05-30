@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
             fclose(fp);
         }
     }
-    close (sockfd);
+    mw_close(sockfd);
     printf("[client] connection lost.\n");
     return (0);
 }

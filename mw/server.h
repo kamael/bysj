@@ -319,4 +319,22 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     return r;
 }
 
+int mw_shutdown(int fake_fd, int signal)
+{
+    client_t *current;
+    id_fd_t *id_key;
+    int fd;
 
+    HASH_FIND_INT(cli_fd_table, &fake_fd, current);
+    assert(current != NULL);
+    HASH_FIND_INT(id_fd_table, &(current->client_id), id_key);
+    assert(id_key != NULL);
+
+    fd = current->fd;
+    free(current);
+    free(id_key);
+    HASH_DEL(cli_fd_table, current);
+    HASH_DEL(id_fd_table, id_key);
+
+    return shutdown(fd, signal);
+}

@@ -81,7 +81,7 @@ int main ()
             }
             printf("ok!\n");
             success = 1;
-            shutdown(nsockfd, 2);
+            mw_shutdown(nsockfd, 2);
             printf("[server] connection closed.\n");
             while(waitpid(-1, NULL, WNOHANG) > 0);
         }
