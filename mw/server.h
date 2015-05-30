@@ -189,6 +189,8 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
         client->time = 0;
         time(&client->time);
 
+        client->count = -1;
+
         id_key = (id_fd_t *)malloc(sizeof(id_fd_t));
         id_key->id = client_id;
         id_key->fd = client->fake_fd;
@@ -209,7 +211,6 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 {
     client_t *current;
     int r;
-    char buf[20];
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
@@ -236,14 +237,13 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     int r;
 
     int tmp_count;
-    int len;
     char *s_buf;
     char r_buf[20] = "000";
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
-    len = setlen(buf);
-    s_buf = malloc(len + sizeof(int));
+    s_buf = malloc(n + sizeof(int));
+    memset(s_buf, 0, n + sizeof(int));
 
     debug_log("debug::recv from id: %d\n", current->client_id);
 
@@ -260,7 +260,8 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             if (tmp_count - current->count <= 0) {
                 ;
             } else {
-                memcpy(buf, s_buf + sizeof(int), len);
+                current->count = tmp_count;
+                memcpy(buf, s_buf + sizeof(int), n);
                 send(current->fd, r_buf, 20, MSG_NOSIGNAL);
                 break;
             }

@@ -203,16 +203,15 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     client_t *current;
     int r;
 
-    int len;
     char *s_buf;
     char r_buf[20];
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
-    len = strlen(buf);
-    s_buf = malloc(len + sizeof(int));
+    s_buf = malloc(n + sizeof(int));
+    memset(s_buf, 0, n + sizeof(int));
     memcpy(s_buf, (char *)&count_num, sizeof(int));
-    memcpy(s_buf + sizeof(int), buf, len);
+    memcpy(s_buf + sizeof(int), buf, n);
     count_num++;
 
 
@@ -223,7 +222,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
 
     while (1) {
-        r = send(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
+        r = send(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
         if (r <= 0) {
             debug_log("debug::%d droped in send\n", current->client_id);
             current->is_droped = 1;
