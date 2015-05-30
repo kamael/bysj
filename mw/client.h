@@ -9,6 +9,8 @@
 #include <pthread.h>
 #include "uthash.h"
 
+#define NDEBUG
+
 #if !defined(NDEBUG)
 #define debug_log(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
 #else
