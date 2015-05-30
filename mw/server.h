@@ -328,9 +328,13 @@ int mw_shutdown(int fake_fd, int signal)
     client_t *current;
     id_fd_t *id_key;
     int fd;
+    char buf[] = "FFFF";
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
     assert(current != NULL);
+
+    send(current->fd, buf, 5, MSG_NOSIGNAL);
+
     HASH_FIND_INT(id_fd_table, &(current->client_id), id_key);
     assert(id_key != NULL);
 
