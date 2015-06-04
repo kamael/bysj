@@ -1,0 +1,13 @@
+运行环境： Linux 系统下
+使用方法：将 mw 文件夹加入系统路径，或拷贝到代码同一目录下，以头文件形式引用mw目录下两个头文件即可。
+            例如:
+                #include "mw/client.h"
+                #include "mw/server.h"
+
+编译注意：以 DEBUG 方式编译时，将会输出调试信息，可以通过添加 -DNDEBUG 关闭。
+          
+          程序编译需要加上 -lpthread方可正常编译。
+          程序中不允许引用原生SOCKET头文件，如 sys/socket.h netdb.h 等。
+
+test 目录下为测试程序，如无特殊说明，编译方式在 test 目录下 README 文件中。
+
