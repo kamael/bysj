@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../mw/client.h"
+#include "mw/client.h"
 
 int main(int argc, char ** argv)
 {

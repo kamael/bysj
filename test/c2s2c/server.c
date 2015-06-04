@@ -4,7 +4,7 @@
 //#include <linux/in.h>
 #include <string.h>
 
-#include "../mw/server.h"
+#include "mw/server.h"
 
 void *process(void *p_fd)
 {
