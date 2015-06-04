@@ -272,7 +272,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
                     (char *)&timeout, sizeof(timeout));
 
 
-            if (r > 0 && !strcmp(r_buf, c_buf))
+            if (r > 0)
                 break;
         }
     }
@@ -291,7 +291,8 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
 
     int tmp_count;
     char *s_buf;
-    char r_buf[20] = "000";
+    char r_buf[20] = "00";
+    char e_buf[20] = "11";
     char close_buf[] = "FFFF";
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
@@ -318,7 +319,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             memcpy((char *)&tmp_count, s_buf, sizeof(int));
             if (tmp_count - current->count <= 0) {
                 debug_log("debug:: count is little\n");
-                ;
+                send(current->fd, e_buf, 20, MSG_NOSIGNAL);
             } else {
                 debug_log("debug:: send back\n");
                 current->count = tmp_count;
