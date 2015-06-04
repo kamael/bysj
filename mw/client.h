@@ -276,6 +276,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     int tmp_count;
     char *s_buf;
     char r_buf[20] = "00";
+    char e_buf[20] = "11";
     char close_buf[] = "FFFF";
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
@@ -310,6 +311,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             if (tmp_count - current->count <= 0) {
                 debug_log("count little %d %d\n",
                     tmp_count, current->count);
+                send(current->fd, e_buf, 20, MSG_NOSIGNAL);
             } else {
 
                 debug_log("send success log\n");

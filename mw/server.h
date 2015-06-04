@@ -227,6 +227,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     char *s_buf;
     char r_buf[20];
+    char c_buf[] = "00";
 
     struct timeval timeout;
     timeout.tv_usec = 0;
@@ -270,7 +271,8 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
                     (char *)&timeout, sizeof(timeout));
 
-            if (r > 0)
+
+            if (r > 0 && !strcmp(r_buf, c_buf))
                 break;
         }
     }
