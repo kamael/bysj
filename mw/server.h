@@ -9,13 +9,15 @@
 #include <pthread.h>
 #include "uthash.h"
 
-
+//调试宏 gcc -DNDEBUG 可关闭调试输出
 #if !defined(NDEBUG)
 #define debug_log(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
 #else
 #define debug_log(...) do {} while (0)
 #endif
 
+
+//连接结构体
 struct client {
     int fake_fd;        //key
     int fd;
@@ -33,6 +35,9 @@ struct client {
     UT_hash_handle hh;
 };
 
+
+//辅助结构体
+//注意：一个hash表只能有一个key
 struct id_fd {
     int id;             //key
     int fd;
@@ -42,13 +47,21 @@ struct id_fd {
 typedef struct client client_t;
 typedef struct id_fd id_fd_t;
 
+
+//结构体 hash 表
 client_t *cli_fd_table = NULL;
 id_fd_t *id_fd_table = NULL;
 
+
+//心跳包开关
 int heart_on = 0;
+
+//确保一个包只且只传一次的计数器
 int count_num = 0;
 
 
+
+//接受心跳包
 void mw_init_recv_heart(void *p)
 {
     struct sockaddr_in address;
@@ -65,7 +78,7 @@ void mw_init_recv_heart(void *p)
     time_t cur_time;
     double passed_time;
 
-    //use for timeout
+    //use for timeout 超时为6秒
     struct timeval timeout;
     timeout.tv_sec = 6;
     timeout.tv_usec = 0;
@@ -135,22 +148,28 @@ void mw_init_recv_heart(void *p)
 }
 
 
-
+//socket接口函数
 int mw_socket(int domain, int type, int protocol)
 {
     int fd = socket(domain, type, protocol);
     return fd;
 }
 
+
+//bind接口函数
 int mw_bind(int fd, struct sockaddr *addr, socklen_t addr_len)
 {
     return bind(fd, addr, addr_len);
 }
 
+
+//listen接口函数
 int mw_listen(int fd, int n) {
     return listen(fd, n);
 }
 
+
+//accept接口函数
 int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 {
     int c_fd = accept(fd, addr, addr_len);
@@ -177,10 +196,14 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 
         HASH_FIND_INT(id_fd_table, &client_id, id_key);
         if (id_key) {
+            //正常连接
             HASH_FIND_INT(cli_fd_table, &id_key->fd, client);
             assert(client != NULL);
         }
+
         if (id_key == NULL || client == NULL) {
+            //新的连接建立
+
             debug_log("debug:: new connect from %d\n", client_id);
 
 
@@ -206,6 +229,8 @@ int mw_accept(int fd, struct sockaddr *addr, socklen_t *addr_len)
 
             break;
         } else {
+
+            //连接恢复
             debug_log("debug:: reconnect from %d\n", client->client_id);
 
             shutdown(client->fd, 2);
@@ -235,12 +260,13 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
+    //s_buf是实际发送数据，4byte计数+真是数据
     s_buf = malloc(n + sizeof(int));
     memcpy(s_buf, (char *)&(count_num), sizeof(int));
     memcpy(s_buf + sizeof(int), buf, n);
     count_num++;
 
-
+    //检查连接是否中断
     while (current->is_droped) {
         debug_log("droped");
         sleep(1);
@@ -251,6 +277,8 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     while (1) {
         r = send(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
 
+
+        //对方主动关闭
         if (r == 0)
             return 0;
 
@@ -263,6 +291,8 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         } else {
             debug_log("send recv log\n");
 
+
+            //超时设定
             timeout.tv_sec = 4;
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
                     (char *)&timeout, sizeof(timeout));
@@ -305,7 +335,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     while (1) {
         r = recv(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
 
-        //close
+        //close关闭信号
         if (!strcmp(close_buf, s_buf))
             return 0;
 
@@ -329,7 +359,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             }
         }
     }
-
+    //传送的数据长度一定大于4，因为最前面有一个4字节的计数器，下同
     assert(r > 4);
 
     return r - sizeof(int);
