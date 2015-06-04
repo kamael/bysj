@@ -115,9 +115,9 @@ void mw_init_recv_heart(void *p)
 
         time(&cur_time);
         passed_time = difftime(cur_time, last_time);
-        debug_log("debug::heart: passed %f\n", passed_time);
+        //debug_log("debug::heart: passed %f\n", passed_time);
         if (passed_time >= 6) {
-            debug_log("start iter\n");
+            //debug_log("start iter\n");
             //遍历hash表，检查每个客户端的连接是否存活
             HASH_ITER(hh, cli_fd_table, current, tmp_item) {
                 if (current->time != 0 && \

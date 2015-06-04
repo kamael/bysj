@@ -98,10 +98,10 @@ void mw_init_send_heart(void *p)
                     (struct sockaddr *)&peer_addr, &peer_len);
 
             if (r > 0) {
-                debug_log("debug: send heart\n");
+                //debug_log("debug: send heart\n");
                 client->is_connected = 1;
             } else {
-                debug_log("debug: heart error\n");
+                //debug_log("debug: heart error\n");
                 client->is_droped = 1;
                 client->is_connected = 0;
                 shutdown(client->fd, 2);
