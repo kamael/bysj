@@ -245,7 +245,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         sleep(1);
     }
 
-    debug_log("start send");
+    debug_log("start send\n");
 
     while (1) {
         r = send(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
@@ -260,7 +260,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
                 sleep(1);
             }
         } else {
-            debug_log("send recv log");
+            debug_log("send recv log\n");
 
             timeout.tv_sec = 4;
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
@@ -275,7 +275,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         }
     }
 
-    debug_log("send success");
+    debug_log("send success\n");
 
     assert(r > 4);
 
@@ -290,6 +290,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     int tmp_count;
     char *s_buf;
     char r_buf[20] = "000";
+    char close_buf[] = "FFFF";
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
@@ -301,10 +302,11 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     while (1) {
         r = recv(current->fd, s_buf, n, flags | MSG_NOSIGNAL);
 
-        if (r == 0)
+        //close
+        if (!strcmp(close_buf, s_buf))
             return 0;
 
-        if (r < 0) {
+        if (r <= 0) {
             debug_log("debug::%d droped in recv\n", current->client_id);
             current->is_droped = 1;
             while (current->is_droped) {

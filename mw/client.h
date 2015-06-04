@@ -312,7 +312,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
                     tmp_count, current->count);
             } else {
 
-                debug_log("send success log");
+                debug_log("send success log\n");
                 current->count = tmp_count;
                 memcpy(buf, s_buf + sizeof(int), n);
                 send(current->fd, r_buf, 20, MSG_NOSIGNAL);
