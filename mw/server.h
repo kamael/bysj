@@ -358,3 +358,8 @@ int mw_shutdown(int fake_fd, int signal)
 
     return shutdown(fd, signal);
 }
+
+int mw_close(int fake_fd)
+{
+    return mw_shutdown(fake_fd, 2);
+}

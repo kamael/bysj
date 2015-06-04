@@ -9,13 +9,15 @@
 #include <pthread.h>
 #include "uthash.h"
 
-
+//调试宏 gcc -DNDEBUG 可关闭调试输出
 #if !defined(NDEBUG)
 #define debug_log(...) do { fprintf(stdout, __VA_ARGS__); } while (0)
 #else
 #define debug_log(...) do {} while (0)
 #endif
 
+
+//连接结构体
 struct client {
     int fake_fd;        //key
     int fd;
@@ -39,6 +41,8 @@ struct client {
     UT_hash_handle hh;
 };
 
+
+//辅助结构体
 //注意：一个hash表只能有一个key
 struct id_fd {
     int id;             //key
@@ -49,12 +53,20 @@ struct id_fd {
 typedef struct client client_t;
 typedef struct id_fd id_fd_t;
 
+
+//结构体 hash 表
 client_t *cli_fd_table = NULL;
 id_fd_t *id_fd_table = NULL;
 
+
+//心跳包开关
 int heart_on = 0;
+
+//确保一个包只且只传一次的计数器
 int count_num = 0;
 
+
+//开始心跳包工作
 void mw_init_send_heart(void *p)
 {
     struct sockaddr_in address;
@@ -63,6 +75,8 @@ void mw_init_send_heart(void *p)
     struct sockaddr_in peer_addr;
     socklen_t peer_len;
     int r;
+
+    //设定2秒超时
     struct timeval timeout;
     timeout.tv_sec = 2;
     timeout.tv_usec = 0;
@@ -88,6 +102,7 @@ void mw_init_send_heart(void *p)
         sleep(2);
 
         HASH_ITER(hh, cli_fd_table, client, tmp_item) {
+
             address.sin_addr.s_addr = client->server_ip;
             address.sin_port = htons(client->server_port);
             memcpy(buf, (char *)&(client->client_id), sizeof(int));
@@ -98,6 +113,7 @@ void mw_init_send_heart(void *p)
                     (struct sockaddr *)&peer_addr, &peer_len);
 
             if (r > 0) {
+                //收到了响应包
                 //debug_log("debug: send heart\n");
                 client->is_connected = 1;
             } else {
@@ -111,8 +127,6 @@ void mw_init_send_heart(void *p)
     }
 
 }
-
-
 
 
 
@@ -143,9 +157,6 @@ int mw_socket(int domain, int type, int protocol)
     current->is_connected = 0;
 
     current->server_port = 8992;
-/*
-    current->time = 0;
-*/
 
     current->count = -1;
 
@@ -158,6 +169,7 @@ int mw_socket(int domain, int type, int protocol)
     id_key->id = current->client_id;
     id_key->fd = current->fake_fd;
 
+    //添加连接
     HASH_ADD_INT(cli_fd_table, fake_fd, current);
     HASH_ADD_INT(id_fd_table, id, id_key);
 
@@ -174,6 +186,9 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
     if (current->is_droped) {
+        //重连
+
+        //利用心跳包的探测功能，只有等到心跳包探测成功后才开始连接
         while (current->is_connected == 0) {
             sleep(2);
         }
@@ -189,6 +204,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
         current->is_droped = 0;
 
     } else {
+        //正常连接
 
         current->server_ip = (long)(((struct sockaddr_in *)addr)->sin_addr.s_addr);
 
@@ -199,6 +215,7 @@ int mw_connect(int fake_fd, struct sockaddr *addr, socklen_t len)
 
     }
 
+    //发送识别ID
     send(   current->fd,
             &(current->client_id),
             sizeof(current->client_id),
@@ -221,12 +238,14 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
 
+    // s_buf 为实际发送数据，4 byte 计数 + 真实数据
     s_buf = malloc(n + sizeof(int));
     memcpy(s_buf, (char *)&count_num, sizeof(int));
     memcpy(s_buf + sizeof(int), buf, n);
     count_num++;
 
 
+    //检查连接是否中断，如中断则连好后才发送
     if (current->is_droped) {
         debug_log("debug::%d droped before send\n", current->client_id);
         mw_connect(fake_fd, &(current->sock_addr), current->sock_len);
@@ -237,8 +256,10 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
     while (1) {
         r = send(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
 
+        //对方主动关闭(这里假设服务器端不会无故断网)
         if (r == 0)
             return 0;
+
 
         if (r < 0) {
             debug_log("debug::%d droped in send\n", current->client_id);
@@ -247,6 +268,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
         } else {
             debug_log("debug:: recv success log start\n");
 
+            //设置超时
             timeout.tv_sec = 4;
             setsockopt(current->fd, SOL_SOCKET, SO_RCVTIMEO,
                 (char *)&timeout, sizeof(timeout));
@@ -263,6 +285,7 @@ ssize_t mw_send(int fake_fd, const void *buf, size_t n, int flags)
 
     debug_log("debug:: send success\n");
 
+    //传送的数据长度一定大于4，因为最前面有一个4字节的计数器，下同
     assert(r > 4);
 
     return r - sizeof(int);
@@ -295,7 +318,7 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     while (1) {
         r = recv(current->fd, s_buf, n + sizeof(int), flags | MSG_NOSIGNAL);
 
-        //close
+        //接收关闭信号
         if (!strcmp(close_buf, s_buf))
             return 0;
 
@@ -311,10 +334,14 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
             if (tmp_count - current->count <= 0) {
                 debug_log("count little %d %d\n",
                     tmp_count, current->count);
+
+                //接收到错误包也要回应，不然对端不会发送新包
                 send(current->fd, e_buf, 20, MSG_NOSIGNAL);
             } else {
 
                 debug_log("send success log\n");
+
+                //更新计数器，保证 current->count 与对端同步
                 current->count = tmp_count;
                 memcpy(buf, s_buf + sizeof(int), n);
                 send(current->fd, r_buf, 20, MSG_NOSIGNAL);
@@ -328,14 +355,18 @@ ssize_t mw_recv(int fake_fd, void *buf, size_t n, int flags)
     return r - sizeof(int);
 }
 
-int mw_close(int fake_fd)
+int mw_shutdown(int fake_fd, int signal)
 {
     client_t *current;
     id_fd_t *id_key;
     int fd;
+    char buf[] = "FFFF";
 
     HASH_FIND_INT(cli_fd_table, &fake_fd, current);
     assert(current != NULL);
+
+    send(current->fd, buf, 5, MSG_NOSIGNAL);
+
     HASH_FIND_INT(id_fd_table, &(current->client_id), id_key);
     assert(id_key != NULL);
 
@@ -345,7 +376,12 @@ int mw_close(int fake_fd)
     HASH_DEL(cli_fd_table, current);
     HASH_DEL(id_fd_table, id_key);
 
-    return close(fd);
+    return shutdown(fd, signal);
+}
+
+int mw_close(int fake_fd)
+{
+    return mw_shutdown(fake_fd, 2);
 }
 
 
